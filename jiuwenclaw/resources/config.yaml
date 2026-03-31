@@ -16,6 +16,12 @@ logging:
 memory:
   mode: local
 
+a2ui:
+  # A2UI 集成体验开关：
+  # - true: 跳过真实 LLM，直接返回演示 A2UI 响应（便于空白环境快速验证）
+  # - false: 默认关闭，走正常模型回复
+  demo_enabled: false
+
 models:
   default:
       model_client_config:

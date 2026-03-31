@@ -63,13 +63,37 @@
 `tests/unit_tests/test_a2ui.py`：
 1. Builder 最小 payload：校验 `createSurface` + `createComponent`。  
 2. fenced block 解析：校验可提取 JSONL 且补齐 version。  
-3. stream chunk 识别：`answer` 中 A2UI 输出应映射到 `chat.a2ui`。  
+3. A2UI 文本识别：`is_a2ui_text` 能识别 fenced `a2ui-jsonl`。  
 
 ### 前端手工测试建议
 1. 纯文本回复：应仍显示 Markdown 文本气泡。  
 2. A2UI 表单：发送 date picker/card JSONL，应显示结构化组件块。  
 3. A2UI 按钮交互：点击按钮后事件需按现有请求链路回传后端（可在后续迭代接入 action 桥接）。  
 4. 流式 A2UI：分多批 `chat.a2ui` 行发送，UI 应增量更新。  
+
+### 空白环境快速体验（推荐）
+> 目标：不依赖模型配置，直接观察 “文本聊天窗口 -> A2UI 组件气泡” 的变化。
+
+1. 克隆并进入项目：
+   ```bash
+   git clone https://github.com/openJiuwen-ai/jiuwenclaw.git
+   cd jiuwenclaw
+   ```
+2. 安装后端与前端依赖（按项目 README 正常安装）。
+3. 打开配置文件 `jiuwenclaw/resources/config.yaml`，设置：
+   ```yaml
+   a2ui:
+     demo_enabled: true
+   ```
+   或者使用环境变量（无需改配置）：
+   ```bash
+   export JIUWENCLAW_A2UI_DEMO=true
+   ```
+4. 启动服务并打开 Web 聊天界面。
+5. 发送任意消息，或发送 `/a2ui-demo 今天安排`。
+   - 期望结果：助手消息以 `chat.a2ui` 事件返回，聊天气泡中显示结构化组件（Card/Button）而非纯文本。
+6. 对照关闭开关再次测试：
+   - `demo_enabled: false` 且不设置环境变量时，恢复原来的文本回复路径。
 
 ## 7) 架构图
 
@@ -89,4 +113,3 @@ flowchart LR
 ```
 
 > HarmonyOS/ArkUI 兼容建议：保持后端事件与 transport 不变，仅替换前端 renderer 适配层即可。
-

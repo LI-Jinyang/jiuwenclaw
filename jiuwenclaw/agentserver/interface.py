@@ -25,7 +25,11 @@ from openjiuwen.core.session.checkpointer.persistence import PersistenceCheckpoi
 from jiuwenclaw.agentserver.tools.multi_session_toolkits import MultiSessionToolkit
 from jiuwenclaw.agentserver.tools import SendFileToolkit
 from jiuwenclaw.agentserver.prompt_builder import build_system_prompt, build_user_prompt
-from jiuwenclaw.agentserver.a2ui import extract_a2ui_jsonl_lines, is_a2ui_text
+from jiuwenclaw.agentserver.a2ui import (
+    A2UIResponseBuilder,
+    extract_a2ui_jsonl_lines,
+    is_a2ui_text,
+)
 from jiuwenclaw.gateway.cron import CronController, CronTargetChannel
 
 from jiuwenclaw.utils import (
@@ -1209,6 +1213,19 @@ class JiuWenClaw:
         if self._instance is None:
             raise RuntimeError("JiuWenClaw 未初始化，请先调用 create_instance()")
 
+        config_base = get_config()
+        if self._is_a2ui_demo_enabled(request, config_base):
+            return AgentResponse(
+                request_id=request.request_id,
+                channel_id=request.channel_id,
+                ok=True,
+                payload={
+                    "event_type": "chat.a2ui",
+                    "jsonl": self._build_a2ui_demo_lines(str(request.params.get("query", "") or "")),
+                },
+                metadata=request.metadata,
+            )
+
         # 检查模型配置
         if not self._has_valid_model_config():
             return AgentResponse(
@@ -1237,7 +1254,6 @@ class JiuWenClaw:
             "[JiuWenClaw] 处理请求: request_id=%s channel_id=%s session_id=%s",
             request.request_id, request.channel_id, session_id,
         )
-        config_base = get_config()
         memory_mode = get_memory_mode(config_base)
         inputs = {
             "conversation_id": request.session_id,
@@ -1370,6 +1386,25 @@ class JiuWenClaw:
         if self._instance is None:
             raise RuntimeError("JiuWenClaw 未初始化，请先调用 create_instance()")
 
+        config_base = get_config()
+        if self._is_a2ui_demo_enabled(request, config_base):
+            yield AgentResponseChunk(
+                request_id=request.request_id,
+                channel_id=request.channel_id,
+                payload={
+                    "event_type": "chat.a2ui",
+                    "jsonl": self._build_a2ui_demo_lines(str(request.params.get("query", "") or "")),
+                },
+                is_complete=False,
+            )
+            yield AgentResponseChunk(
+                request_id=request.request_id,
+                channel_id=request.channel_id,
+                payload={"is_complete": True},
+                is_complete=True,
+            )
+            return
+
         # 检查模型配置
         if not self._has_valid_model_config():
             yield AgentResponseChunk(
@@ -1396,7 +1431,6 @@ class JiuWenClaw:
             "[JiuWenClaw] 处理流式请求: request_id=%s channel_id=%s session_id=%s",
             request.request_id, request.channel_id, session_id,
         )
-        config_base = get_config()
         memory_mode = get_memory_mode(config_base)
         inputs = {
             "conversation_id": request.session_id,
@@ -1752,3 +1786,27 @@ class JiuWenClaw:
 
     def _prepare_instance_by_session(self):
         pass
+
+    @staticmethod
+    def _is_a2ui_demo_enabled(request: AgentRequest, config_base: dict[str, Any]) -> bool:
+        env_enabled = os.getenv("JIUWENCLAW_A2UI_DEMO", "").strip().lower() in {"1", "true", "yes", "on"}
+        cfg_enabled = bool((config_base.get("a2ui", {}) or {}).get("demo_enabled", False))
+        req_enabled = bool(request.params.get("a2ui_demo", False))
+        query = str(request.params.get("query", "") or "").strip().lower()
+        slash_enabled = query.startswith("/a2ui-demo")
+        return env_enabled or cfg_enabled or req_enabled or slash_enabled
+
+    @staticmethod
+    def _build_a2ui_demo_lines(query: str) -> list[str]:
+        trimmed = (query or "").strip()
+        if trimmed.startswith("/a2ui-demo"):
+            trimmed = trimmed[len("/a2ui-demo"):].strip()
+        description = trimmed or "这是一个用于验证 A2UI 集成效果的演示响应。"
+        builder = A2UIResponseBuilder()
+        return (
+            builder.create_surface()
+            .create_component("card_demo", "Card", props={"title": "A2UI Demo", "description": description})
+            .create_component("btn_confirm", "Button", parent_id="card_demo", props={"text": "确认"})
+            .create_component("btn_cancel", "Button", parent_id="card_demo", props={"text": "取消"})
+            .to_jsonl_lines()
+        )
