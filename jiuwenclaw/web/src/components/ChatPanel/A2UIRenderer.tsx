@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 
 interface A2UIRendererProps {
   lines?: string[];
@@ -22,6 +23,23 @@ interface ParsedSurface {
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return Boolean(v) && typeof v === 'object' && !Array.isArray(v);
+}
+
+function readLiteralString(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (isRecord(value) && typeof value.literalString === 'string') {
+    return value.literalString;
+  }
+  return '';
+}
+
+function readChildIds(value: unknown): string[] {
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string');
+  if (isRecord(value) && Array.isArray(value.explicitList)) {
+    return value.explicitList.filter((item): item is string => typeof item === 'string');
+  }
+  return [];
 }
 
 export function A2UIRenderer({ lines }: A2UIRendererProps) {
@@ -94,21 +112,80 @@ export function A2UIRenderer({ lines }: A2UIRendererProps) {
       });
   }, [parsed.catalogId, parsed.surfaceOk]);
 
+  const filteredComponents = useMemo(
+    () => parsed.components.filter((component) => allowedTypes.has(component.type)),
+    [allowedTypes, parsed.components]
+  );
+  const componentMap = useMemo(
+    () => new Map(filteredComponents.map((component) => [component.componentId, component])),
+    [filteredComponents]
+  );
+  const rootId = useMemo(() => {
+    if (componentMap.has('root')) return 'root';
+    return filteredComponents[0]?.componentId ?? '';
+  }, [componentMap, filteredComponents]);
+
+  const renderById = (componentId: string): React.ReactNode => {
+    const comp = componentMap.get(componentId);
+    if (!comp) return null;
+    const props = comp.props ?? {};
+    switch (comp.type) {
+      case 'Text': {
+        const text = readLiteralString(props.text) || JSON.stringify(props);
+        return <div className="whitespace-pre-wrap">{text}</div>;
+      }
+      case 'Button': {
+        const label = readLiteralString(props.label) || 'Button';
+        return (
+          <button
+            type="button"
+            className="px-3 py-1.5 rounded border border-border bg-secondary text-sm hover:bg-secondary/80"
+          >
+            {label}
+          </button>
+        );
+      }
+      case 'Row': {
+        const childIds = readChildIds(props.children);
+        return <div className="flex gap-2 flex-wrap">{childIds.map((id) => <React.Fragment key={id}>{renderById(id)}</React.Fragment>)}</div>;
+      }
+      case 'Column':
+      case 'List': {
+        const childIds = readChildIds(props.children);
+        return <div className="space-y-2">{childIds.map((id) => <React.Fragment key={id}>{renderById(id)}</React.Fragment>)}</div>;
+      }
+      case 'Card': {
+        const title = readLiteralString(props.title);
+        const childIds = readChildIds(props.child);
+        return (
+          <div className="rounded-md border border-border p-3 bg-background-subtle space-y-2">
+            {title ? <div className="font-medium">{title}</div> : null}
+            {childIds.map((id) => (
+              <React.Fragment key={id}>{renderById(id)}</React.Fragment>
+            ))}
+          </div>
+        );
+      }
+      default:
+        return (
+          <div className="rounded-md border border-border p-3 bg-background-subtle">
+            <div className="text-xs text-text-muted mb-1">{comp.type}</div>
+            <pre className="text-xs whitespace-pre-wrap break-words text-text">
+              {JSON.stringify(props, null, 2)}
+            </pre>
+          </div>
+        );
+    }
+  };
+
   if (!parsed.surfaceOk) {
     return <div className="text-xs text-text-muted">A2UI surface 无效或 catalog 未通过校验。</div>;
   }
 
   return (
     <div className="space-y-2">
-      {parsed.components.filter((component) => allowedTypes.has(component.type)).map((component) => (
-        <div key={component.componentId} className="rounded-md border border-border p-3 bg-background-subtle">
-          <div className="text-xs text-text-muted mb-1">{component.type}</div>
-          <pre className="text-xs whitespace-pre-wrap break-words text-text">
-            {JSON.stringify(component.props ?? {}, null, 2)}
-          </pre>
-        </div>
-      ))}
-      {parsed.components.length === 0 && (
+      {rootId ? renderById(rootId) : null}
+      {filteredComponents.length === 0 && (
         <div className="text-xs text-text-muted">A2UI 结构已接收，暂无可渲染组件。</div>
       )}
     </div>
