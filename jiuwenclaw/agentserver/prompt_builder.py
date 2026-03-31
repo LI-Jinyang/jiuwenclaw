@@ -12,6 +12,7 @@ from jiuwenclaw.utils import (
     get_agent_skills_dir,
     get_agent_workspace_dir,
 )
+from jiuwenclaw.agentserver.features.a2ui_feature import build_a2ui_prompt
 
 
 logger = logging.getLogger(__name__)
@@ -911,6 +912,10 @@ Be careful with your configuration, if changes are required, remember to restart
 """
 
 
+def _a2ui_prompt(language: str) -> str:
+    return build_a2ui_prompt(language)
+
+
 def build_system_prompt(
     mode: str,
     language: str,
@@ -974,6 +979,8 @@ Be a warm person, not a cold machine. Help your user unconditionally and meet th
     system_prompt += _tone_prompt(language) + '\n'
     system_prompt += "---\n\n"
     system_prompt += _safety_prompt(language) + '\n'
+    system_prompt += "---\n\n"
+    system_prompt += _a2ui_prompt(language) + '\n'
     system_prompt += "---\n\n"
     system_prompt += _response_prompt(language) + '\n'
     return system_prompt
