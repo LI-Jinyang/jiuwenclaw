@@ -911,6 +911,46 @@ Be careful with your configuration, if changes are required, remember to restart
 """
 
 
+def _a2ui_prompt(language: str) -> str:
+    if language == "zh":
+        return """## A2UI 生成式 UI 输出规范（v0.9）
+
+当任务更适合结构化交互时（表单收集、可点击按钮、表格、结构化结果、图表卡片），优先输出 A2UI；简单问答、问候、解释性回答使用普通文本。
+
+### 输出协议
+- A2UI 必须使用 JSONL（每行一个 JSON 对象）。
+- 第一行必须是 `createSurface`，随后是一个或多个 `createComponent` / `updateComponents`。
+- 必须使用 catalog：`https://a2ui.org/specification/v0_9/basic_catalog.json`。
+- 仅允许输出受信任 catalog 中的组件，不允许输出 HTML / JS / 可执行代码。
+
+### 传输约定（用于网关识别）
+当你输出 A2UI 时，必须使用如下 fenced block 包裹（且 block 内只包含 JSONL 行）：
+
+```a2ui-jsonl
+{"version":"v0.9","createSurface":{"surfaceId":"main","catalogId":"https://a2ui.org/specification/v0_9/basic_catalog.json"}}
+{"version":"v0.9","createComponent":{"componentId":"c1","surfaceId":"main","parentId":null,"type":"Card","props":{"title":"Result"}}}
+```
+"""
+    return """## A2UI Generative UI output rules (v0.9)
+
+Prefer A2UI when the task benefits from structured interaction (forms, clickable actions, tables, cards/charts). Use plain text for simple Q&A, greetings, and explanations.
+
+### Protocol
+- A2UI must be JSONL (one JSON object per line).
+- First line must be `createSurface`, followed by one or more `createComponent` / `updateComponents`.
+- Use catalog: `https://a2ui.org/specification/v0_9/basic_catalog.json`.
+- Only use trusted catalog components; never output HTML/JS/executable code.
+
+### Transport signal
+When outputting A2UI, wrap it in this fenced block format (content must be JSONL lines only):
+
+```a2ui-jsonl
+{"version":"v0.9","createSurface":{"surfaceId":"main","catalogId":"https://a2ui.org/specification/v0_9/basic_catalog.json"}}
+{"version":"v0.9","createComponent":{"componentId":"c1","surfaceId":"main","parentId":null,"type":"Card","props":{"title":"Result"}}}
+```
+"""
+
+
 def build_system_prompt(
     mode: str,
     language: str,
@@ -974,6 +1014,8 @@ Be a warm person, not a cold machine. Help your user unconditionally and meet th
     system_prompt += _tone_prompt(language) + '\n'
     system_prompt += "---\n\n"
     system_prompt += _safety_prompt(language) + '\n'
+    system_prompt += "---\n\n"
+    system_prompt += _a2ui_prompt(language) + '\n'
     system_prompt += "---\n\n"
     system_prompt += _response_prompt(language) + '\n'
     return system_prompt

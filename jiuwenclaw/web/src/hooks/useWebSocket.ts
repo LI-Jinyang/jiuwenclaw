@@ -583,6 +583,31 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
           }
         }
       }),
+      webClient.on('chat.a2ui', ({ payload }) => {
+        if (!shouldHandleSessionEvent(payload)) return;
+        const raw = payload.jsonl;
+        const lines = Array.isArray(raw)
+          ? raw.filter((item): item is string => typeof item === 'string')
+          : [];
+        if (lines.length === 0) {
+          return;
+        }
+        const { currentStreamId, messages } = useChatStore.getState();
+        if (currentStreamId) {
+          const current = messages.find((m) => m.id === currentStreamId);
+          const merged = [...(current?.a2uiLines ?? []), ...lines];
+          updateMessage(currentStreamId, { a2uiLines: merged, isStreaming: false, content: '' });
+          stopStreaming();
+          return;
+        }
+        addMessage({
+          id: `a2ui-${Date.now()}`,
+          role: 'assistant',
+          content: '',
+          a2uiLines: lines,
+          timestamp: new Date().toISOString(),
+        });
+      }),
       webClient.on('chat.media', ({ payload }) => {
         if (!shouldHandleSessionEvent(payload)) return;
         const mediaPayload = payload as {

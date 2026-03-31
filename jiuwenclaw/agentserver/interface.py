@@ -25,6 +25,7 @@ from openjiuwen.core.session.checkpointer.persistence import PersistenceCheckpoi
 from jiuwenclaw.agentserver.tools.multi_session_toolkits import MultiSessionToolkit
 from jiuwenclaw.agentserver.tools import SendFileToolkit
 from jiuwenclaw.agentserver.prompt_builder import build_system_prompt, build_user_prompt
+from jiuwenclaw.agentserver.a2ui import extract_a2ui_jsonl_lines, is_a2ui_text
 from jiuwenclaw.gateway.cron import CronController, CronTargetChannel
 
 from jiuwenclaw.utils import (
@@ -1578,6 +1579,12 @@ class JiuWenClaw:
                     )
                     if not content:
                         return None
+                    if is_a2ui_text(content):
+                        return {
+                            "event_type": "chat.a2ui",
+                            "jsonl": extract_a2ui_jsonl_lines(content),
+                            "source_chunk_type": chunk_type,
+                        }
                     return {
                         "event_type": "chat.delta",
                         "content": content,
@@ -1608,6 +1615,13 @@ class JiuWenClaw:
                         is_chunked = False
                     if not content:
                         return None
+                    if is_a2ui_text(content):
+                        return {
+                            "event_type": "chat.a2ui",
+                            "jsonl": extract_a2ui_jsonl_lines(content),
+                            "source_chunk_type": chunk_type,
+                            "is_final": not is_chunked,
+                        }
                     # For chunked answers, return as delta (will be accumulated)
                     # For non-chunked, return as final
                     if is_chunked:

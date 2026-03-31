@@ -15,6 +15,7 @@ import { useSpeechSynthesis } from '../../hooks';
 import clsx from 'clsx';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { A2UIRenderer } from './A2UIRenderer';
 
 interface MessageItemProps {
   message: Message;
@@ -33,6 +34,7 @@ export function MessageItem({ message, autoSpeak = false }: MessageItemProps) {
     audioBase64,
     audioMime,
     mediaItems,
+    a2uiLines,
   } = message;
   const [hasAutoSpoken, setHasAutoSpoken] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
@@ -266,23 +268,29 @@ export function MessageItem({ message, autoSpeak = false }: MessageItemProps) {
                 {isUser ? (
                   <span className="whitespace-pre-wrap">{content}</span>
                 ) : (
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      a: ({ node, href, children, ...props }) => (
-                        <a 
-                          href={href} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          {...props}
-                        >
-                          {children}
-                        </a>
-                      )
-                    }}
-                  >
-                    {content}
-                  </ReactMarkdown>
+                  <>
+                    {a2uiLines && a2uiLines.length > 0 ? (
+                      <A2UIRenderer lines={a2uiLines} />
+                    ) : (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          a: ({ node, href, children, ...props }) => (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              {...props}
+                            >
+                              {children}
+                            </a>
+                          )
+                        }}
+                      >
+                        {content}
+                      </ReactMarkdown>
+                    )}
+                  </>
                 )}
               </div>
               {mediaItems && mediaItems.length > 0 && (

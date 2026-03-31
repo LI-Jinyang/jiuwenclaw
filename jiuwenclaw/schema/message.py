@@ -99,6 +99,7 @@ class EventType(Enum):
     CHAT_SUBTASK_UPDATE = "chat.subtask_update"
     CHAT_ASK_USER_QUESTION = "chat.ask_user_question"
     CHAT_SESSION_RESULT = "chat.session_result"
+    CHAT_A2UI = "chat.a2ui"
     HEARTBEAT_RELAY = "heartbeat.relay"
     HISTORY_GET = "history.message"
 
