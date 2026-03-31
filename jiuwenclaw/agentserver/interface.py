@@ -25,6 +25,11 @@ from openjiuwen.core.session.checkpointer.persistence import PersistenceCheckpoi
 from jiuwenclaw.agentserver.tools.multi_session_toolkits import MultiSessionToolkit
 from jiuwenclaw.agentserver.tools import SendFileToolkit
 from jiuwenclaw.agentserver.prompt_builder import build_system_prompt, build_user_prompt
+from jiuwenclaw.agentserver.features.a2ui_feature import (
+    build_a2ui_demo_lines,
+    detect_a2ui_jsonl,
+    is_a2ui_demo_enabled,
+)
 from jiuwenclaw.gateway.cron import CronController, CronTargetChannel
 
 from jiuwenclaw.utils import (
@@ -1208,6 +1213,22 @@ class JiuWenClaw:
         if self._instance is None:
             raise RuntimeError("JiuWenClaw 未初始化，请先调用 create_instance()")
 
+        config_base = get_config()
+        if self._is_a2ui_demo_enabled(request, config_base):
+            return AgentResponse(
+                request_id=request.request_id,
+                channel_id=request.channel_id,
+                ok=True,
+                payload={
+                    "event_type": "chat.a2ui",
+                    "jsonl": self._build_a2ui_demo_lines(
+                        str(request.params.get("query", "") or ""),
+                        config_base,
+                    ),
+                },
+                metadata=request.metadata,
+            )
+
         # 检查模型配置
         if not self._has_valid_model_config():
             return AgentResponse(
@@ -1236,7 +1257,6 @@ class JiuWenClaw:
             "[JiuWenClaw] 处理请求: request_id=%s channel_id=%s session_id=%s",
             request.request_id, request.channel_id, session_id,
         )
-        config_base = get_config()
         memory_mode = get_memory_mode(config_base)
         inputs = {
             "conversation_id": request.session_id,
@@ -1369,6 +1389,28 @@ class JiuWenClaw:
         if self._instance is None:
             raise RuntimeError("JiuWenClaw 未初始化，请先调用 create_instance()")
 
+        config_base = get_config()
+        if self._is_a2ui_demo_enabled(request, config_base):
+            yield AgentResponseChunk(
+                request_id=request.request_id,
+                channel_id=request.channel_id,
+                payload={
+                    "event_type": "chat.a2ui",
+                    "jsonl": self._build_a2ui_demo_lines(
+                        str(request.params.get("query", "") or ""),
+                        config_base,
+                    ),
+                },
+                is_complete=False,
+            )
+            yield AgentResponseChunk(
+                request_id=request.request_id,
+                channel_id=request.channel_id,
+                payload={"is_complete": True},
+                is_complete=True,
+            )
+            return
+
         # 检查模型配置
         if not self._has_valid_model_config():
             yield AgentResponseChunk(
@@ -1395,7 +1437,6 @@ class JiuWenClaw:
             "[JiuWenClaw] 处理流式请求: request_id=%s channel_id=%s session_id=%s",
             request.request_id, request.channel_id, session_id,
         )
-        config_base = get_config()
         memory_mode = get_memory_mode(config_base)
         inputs = {
             "conversation_id": request.session_id,
@@ -1578,6 +1619,13 @@ class JiuWenClaw:
                     )
                     if not content:
                         return None
+                    jsonl_lines = detect_a2ui_jsonl(content)
+                    if jsonl_lines:
+                        return {
+                            "event_type": "chat.a2ui",
+                            "jsonl": jsonl_lines,
+                            "source_chunk_type": chunk_type,
+                        }
                     return {
                         "event_type": "chat.delta",
                         "content": content,
@@ -1608,6 +1656,14 @@ class JiuWenClaw:
                         is_chunked = False
                     if not content:
                         return None
+                    jsonl_lines = detect_a2ui_jsonl(content)
+                    if jsonl_lines:
+                        return {
+                            "event_type": "chat.a2ui",
+                            "jsonl": jsonl_lines,
+                            "source_chunk_type": chunk_type,
+                            "is_final": not is_chunked,
+                        }
                     # For chunked answers, return as delta (will be accumulated)
                     # For non-chunked, return as final
                     if is_chunked:
@@ -1738,3 +1794,15 @@ class JiuWenClaw:
 
     def _prepare_instance_by_session(self):
         pass
+
+    @staticmethod
+    def _is_a2ui_demo_enabled(request: AgentRequest, config_base: dict[str, Any]) -> bool:
+        return is_a2ui_demo_enabled(
+            query=str(request.params.get("query", "") or ""),
+            params=request.params,
+            config_base=config_base,
+        )
+
+    @staticmethod
+    def _build_a2ui_demo_lines(query: str, config_base: dict[str, Any] | None = None) -> list[str]:
+        return build_a2ui_demo_lines(query=query, config_base=config_base)
