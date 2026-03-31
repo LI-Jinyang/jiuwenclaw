@@ -1,0 +1,13 @@
+{
+  "version": "v0.9",
+  "catalogId": "/a2ui/basic_catalog.v0_9.json",
+  "components": [
+    { "type": "Card" },
+    { "type": "Text" },
+    { "type": "Button" },
+    { "type": "TextField" },
+    { "type": "DatePicker" },
+    { "type": "Table" }
+  ],
+  "_note": "Offline fallback catalog for JiuwenClaw A2UI integration. Replace with official upstream file when network is available."
+}

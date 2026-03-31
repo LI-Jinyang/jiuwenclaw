@@ -29,6 +29,8 @@ from jiuwenclaw.agentserver.a2ui import (
     A2UIResponseBuilder,
     extract_a2ui_jsonl_lines,
     is_a2ui_text,
+    resolve_allow_catalog_ids,
+    resolve_catalog_id,
 )
 from jiuwenclaw.gateway.cron import CronController, CronTargetChannel
 
@@ -1221,7 +1223,10 @@ class JiuWenClaw:
                 ok=True,
                 payload={
                     "event_type": "chat.a2ui",
-                    "jsonl": self._build_a2ui_demo_lines(str(request.params.get("query", "") or "")),
+                    "jsonl": self._build_a2ui_demo_lines(
+                        str(request.params.get("query", "") or ""),
+                        config_base,
+                    ),
                 },
                 metadata=request.metadata,
             )
@@ -1393,7 +1398,10 @@ class JiuWenClaw:
                 channel_id=request.channel_id,
                 payload={
                     "event_type": "chat.a2ui",
-                    "jsonl": self._build_a2ui_demo_lines(str(request.params.get("query", "") or "")),
+                    "jsonl": self._build_a2ui_demo_lines(
+                        str(request.params.get("query", "") or ""),
+                        config_base,
+                    ),
                 },
                 is_complete=False,
             )
@@ -1797,12 +1805,15 @@ class JiuWenClaw:
         return env_enabled or cfg_enabled or req_enabled or slash_enabled
 
     @staticmethod
-    def _build_a2ui_demo_lines(query: str) -> list[str]:
+    def _build_a2ui_demo_lines(query: str, config_base: dict[str, Any] | None = None) -> list[str]:
         trimmed = (query or "").strip()
         if trimmed.startswith("/a2ui-demo"):
             trimmed = trimmed[len("/a2ui-demo"):].strip()
         description = trimmed or "这是一个用于验证 A2UI 集成效果的演示响应。"
-        builder = A2UIResponseBuilder()
+        builder = A2UIResponseBuilder(
+            catalog_id=resolve_catalog_id(config_base),
+            allow_catalog_ids=resolve_allow_catalog_ids(config_base),
+        )
         return (
             builder.create_surface()
             .create_component("card_demo", "Card", props={"title": "A2UI Demo", "description": description})

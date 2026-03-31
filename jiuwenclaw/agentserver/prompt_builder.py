@@ -12,6 +12,7 @@ from jiuwenclaw.utils import (
     get_agent_skills_dir,
     get_agent_workspace_dir,
 )
+from jiuwenclaw.agentserver.a2ui import A2UI_BASIC_CATALOG_LOCAL, A2UI_BASIC_CATALOG_REMOTE
 
 
 logger = logging.getLogger(__name__)
@@ -913,40 +914,40 @@ Be careful with your configuration, if changes are required, remember to restart
 
 def _a2ui_prompt(language: str) -> str:
     if language == "zh":
-        return """## A2UI 生成式 UI 输出规范（v0.9）
+        return f"""## A2UI 生成式 UI 输出规范（v0.9）
 
 当任务更适合结构化交互时（表单收集、可点击按钮、表格、结构化结果、图表卡片），优先输出 A2UI；简单问答、问候、解释性回答使用普通文本。
 
 ### 输出协议
 - A2UI 必须使用 JSONL（每行一个 JSON 对象）。
 - 第一行必须是 `createSurface`，随后是一个或多个 `createComponent` / `updateComponents`。
-- 必须使用 catalog：`https://a2ui.org/specification/v0_9/basic_catalog.json`。
+- 默认使用本地 catalog：`{A2UI_BASIC_CATALOG_LOCAL}`（可按配置切换在线 catalog）。
 - 仅允许输出受信任 catalog 中的组件，不允许输出 HTML / JS / 可执行代码。
 
 ### 传输约定（用于网关识别）
 当你输出 A2UI 时，必须使用如下 fenced block 包裹（且 block 内只包含 JSONL 行）：
 
 ```a2ui-jsonl
-{"version":"v0.9","createSurface":{"surfaceId":"main","catalogId":"https://a2ui.org/specification/v0_9/basic_catalog.json"}}
-{"version":"v0.9","createComponent":{"componentId":"c1","surfaceId":"main","parentId":null,"type":"Card","props":{"title":"Result"}}}
+{{"version":"v0.9","createSurface":{{"surfaceId":"main","catalogId":"{A2UI_BASIC_CATALOG_LOCAL}"}}}}
+{{"version":"v0.9","createComponent":{{"componentId":"c1","surfaceId":"main","parentId":null,"type":"Card","props":{{"title":"Result"}}}}}}
 ```
 """
-    return """## A2UI Generative UI output rules (v0.9)
+    return f"""## A2UI Generative UI output rules (v0.9)
 
 Prefer A2UI when the task benefits from structured interaction (forms, clickable actions, tables, cards/charts). Use plain text for simple Q&A, greetings, and explanations.
 
 ### Protocol
 - A2UI must be JSONL (one JSON object per line).
 - First line must be `createSurface`, followed by one or more `createComponent` / `updateComponents`.
-- Use catalog: `https://a2ui.org/specification/v0_9/basic_catalog.json`.
+- Default to local catalog: `{A2UI_BASIC_CATALOG_LOCAL}` (config may switch to remote catalog such as `{A2UI_BASIC_CATALOG_REMOTE}`).
 - Only use trusted catalog components; never output HTML/JS/executable code.
 
 ### Transport signal
 When outputting A2UI, wrap it in this fenced block format (content must be JSONL lines only):
 
 ```a2ui-jsonl
-{"version":"v0.9","createSurface":{"surfaceId":"main","catalogId":"https://a2ui.org/specification/v0_9/basic_catalog.json"}}
-{"version":"v0.9","createComponent":{"componentId":"c1","surfaceId":"main","parentId":null,"type":"Card","props":{"title":"Result"}}}
+{{"version":"v0.9","createSurface":{{"surfaceId":"main","catalogId":"{A2UI_BASIC_CATALOG_LOCAL}"}}}}
+{{"version":"v0.9","createComponent":{{"componentId":"c1","surfaceId":"main","parentId":null,"type":"Card","props":{{"title":"Result"}}}}}}
 ```
 """
 

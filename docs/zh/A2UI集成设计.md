@@ -95,6 +95,20 @@
 6. 对照关闭开关再次测试：
    - `demo_enabled: false` 且不设置环境变量时，恢复原来的文本回复路径。
 
+### Catalog 策略（本地优先 + 在线可选）
+- 默认本地 catalog：`/a2ui/basic_catalog.v0_9.json`（前端静态资源）。  
+- 可切到在线 catalog：`https://a2ui.org/specification/v0_9/basic_catalog.json`。  
+- 配置项（`resources/config.yaml`）：
+  ```yaml
+  a2ui:
+    catalog_source: local   # local | remote
+    catalog_url: https://a2ui.org/specification/v0_9/basic_catalog.json
+  ```
+- 开发时可执行脚本同步官方 catalog 到本地：
+  ```bash
+  python scripts/sync_a2ui_catalog.py
+  ```
+
 ## 7) 架构图
 
 ```mermaid

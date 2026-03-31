@@ -3,13 +3,48 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Any
 
 A2UI_VERSION = "v0.9"
-A2UI_BASIC_CATALOG = "https://a2ui.org/specification/v0_9/basic_catalog.json"
+A2UI_BASIC_CATALOG_REMOTE = "https://a2ui.org/specification/v0_9/basic_catalog.json"
+A2UI_BASIC_CATALOG_LOCAL = "/a2ui/basic_catalog.v0_9.json"
 A2UI_TEXT_DELIMITER = "```a2ui-jsonl"
+
+
+def resolve_catalog_id(config: dict[str, Any] | None = None) -> str:
+    """Resolve default catalog id: local by default, optional remote override."""
+    cfg = config or {}
+    a2ui_cfg = cfg.get("a2ui", {}) if isinstance(cfg, dict) else {}
+    source = str(
+        os.getenv("JIUWENCLAW_A2UI_CATALOG_SOURCE")
+        or a2ui_cfg.get("catalog_source")
+        or "local"
+    ).strip().lower()
+    remote_url = str(
+        os.getenv("JIUWENCLAW_A2UI_CATALOG_URL")
+        or a2ui_cfg.get("catalog_url")
+        or A2UI_BASIC_CATALOG_REMOTE
+    ).strip()
+    if source == "remote":
+        return remote_url or A2UI_BASIC_CATALOG_REMOTE
+    return A2UI_BASIC_CATALOG_LOCAL
+
+
+def resolve_allow_catalog_ids(config: dict[str, Any] | None = None) -> set[str]:
+    cfg = config or {}
+    a2ui_cfg = cfg.get("a2ui", {}) if isinstance(cfg, dict) else {}
+    ids = {
+        A2UI_BASIC_CATALOG_LOCAL,
+        A2UI_BASIC_CATALOG_REMOTE,
+        resolve_catalog_id(cfg),
+    }
+    extra = a2ui_cfg.get("allowed_catalog_ids", [])
+    if isinstance(extra, list):
+        ids.update(str(item).strip() for item in extra if str(item).strip())
+    return ids
 
 
 def _parse_json_line(line: str) -> dict[str, Any] | None:
@@ -62,8 +97,13 @@ class A2UIResponseBuilder:
     """Builds A2UI v0.9 JSONL responses with basic validation."""
 
     surface_id: str = "main"
-    catalog_id: str = A2UI_BASIC_CATALOG
-    allow_catalog_ids: set[str] = field(default_factory=lambda: {A2UI_BASIC_CATALOG})
+    catalog_id: str = A2UI_BASIC_CATALOG_LOCAL
+    allow_catalog_ids: set[str] = field(
+        default_factory=lambda: {
+            A2UI_BASIC_CATALOG_LOCAL,
+            A2UI_BASIC_CATALOG_REMOTE,
+        }
+    )
     messages: list[dict[str, Any]] = field(default_factory=list)
 
     def create_surface(self, send_data_model: bool = False, theme: dict[str, Any] | None = None) -> "A2UIResponseBuilder":
@@ -117,4 +157,3 @@ class A2UIResponseBuilder:
 
     def to_jsonl_lines(self) -> list[str]:
         return [json.dumps(msg, ensure_ascii=False) for msg in self.messages]
-

@@ -1,10 +1,11 @@
 import json
 
 from jiuwenclaw.agentserver.a2ui import (
-    A2UI_BASIC_CATALOG,
+    A2UI_BASIC_CATALOG_LOCAL,
     A2UIResponseBuilder,
     extract_a2ui_jsonl_lines,
     is_a2ui_text,
+    resolve_catalog_id,
 )
 
 
@@ -18,7 +19,7 @@ def test_a2ui_response_builder_minimal_payload():
     assert len(lines) == 2
     first = json.loads(lines[0])
     second = json.loads(lines[1])
-    assert first["createSurface"]["catalogId"] == A2UI_BASIC_CATALOG
+    assert first["createSurface"]["catalogId"] == A2UI_BASIC_CATALOG_LOCAL
     assert second["createComponent"]["type"] == "Card"
 
 
@@ -37,3 +38,7 @@ def test_is_a2ui_text_detects_fenced_payload():
 {"createSurface":{"surfaceId":"main","catalogId":"https://a2ui.org/specification/v0_9/basic_catalog.json"}}
 ```"""
     assert is_a2ui_text(raw) is True
+
+
+def test_resolve_catalog_id_default_local():
+    assert resolve_catalog_id({}) == A2UI_BASIC_CATALOG_LOCAL
