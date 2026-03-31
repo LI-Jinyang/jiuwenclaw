@@ -8,6 +8,7 @@ export const HISTORY_MESSAGE_EVENT = 'history.message';
 /** 助手侧仅恢复这些事件；用户消息无 event_type，单独保留 */
 const ALLOWED_ASSISTANT_EVENT_TYPES = new Set([
   'chat.final',
+  'chat.a2ui',
   'chat.tool_call',
   'chat.tool_result',
 ]);
@@ -207,6 +208,22 @@ function parseHistoryTimelineEntry(
     return {
       kind: 'message',
       message: { id, role: 'assistant', content, timestamp: at },
+    };
+  }
+
+  if (eventType === 'chat.a2ui') {
+    const rawLines = payload.jsonl;
+    const a2uiLines = Array.isArray(rawLines)
+      ? rawLines.filter((item): item is string => typeof item === 'string')
+      : [];
+    if (a2uiLines.length === 0) {
+      return null;
+    }
+    const id =
+      pickFirstString(record, ['id', 'message_id', 'msg_id']) ?? `hist-a2ui-${sessionId}-${at}`;
+    return {
+      kind: 'message',
+      message: { id, role: 'assistant', content: '', a2uiLines, timestamp: at },
     };
   }
 
