@@ -421,7 +421,14 @@ def prepare_workspace(overwrite: bool = True, preferred_language: Optional[str] 
         if not src_dir.exists():
             return
         if overwrite and dst_dir.exists():
-            shutil.rmtree(dst_dir)
+            try:
+                shutil.rmtree(dst_dir)
+            except PermissionError as exc:
+                print(
+                    "[jiuwenclaw-init] WARNING: failed to fully clear "
+                    f"{dst_dir} due to a file lock ({exc}). "
+                    "Will continue by merging template files."
+                )
         dst_dir.parent.mkdir(parents=True, exist_ok=True)
         if not dst_dir.exists():
             shutil.copytree(src_dir, dst_dir)
@@ -433,14 +440,28 @@ def prepare_workspace(overwrite: bool = True, preferred_language: Optional[str] 
         _copy_dir(template_agent_workspace, agent_workspace)
     else:
         if overwrite and agent_workspace.exists():
-            shutil.rmtree(agent_workspace)
+            try:
+                shutil.rmtree(agent_workspace)
+            except PermissionError as exc:
+                print(
+                    "[jiuwenclaw-init] WARNING: failed to fully clear "
+                    f"{agent_workspace} due to a file lock ({exc}). "
+                    "Will continue by reusing existing workspace files."
+                )
         agent_workspace.mkdir(parents=True, exist_ok=True)
     _copy_dir(template_agent_memory, agent_memory)
     _copy_dir(template_agent_skills, agent_skills)
 
     # home: 按语言将 PRINCIPLE/TONE/HEARTBEAT 模板复制为无后缀的 .md
     if overwrite and agent_home.exists():
-        shutil.rmtree(agent_home)
+        try:
+            shutil.rmtree(agent_home)
+        except PermissionError as exc:
+            print(
+                "[jiuwenclaw-init] WARNING: failed to fully clear "
+                f"{agent_home} due to a file lock ({exc}). "
+                "Will continue by reusing existing home files."
+            )
     agent_home.mkdir(parents=True, exist_ok=True)
     suffix = "_ZH" if resolved_lang == "zh" else "_EN"
     _principle_src = template_agent_dir / f"PRINCIPLE{suffix}.md"
