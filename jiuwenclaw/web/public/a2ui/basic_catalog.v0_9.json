@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://a2ui.org/specification/v0_9/basic_catalog.json",
+  "title": "A2UI Basic Catalog",
+  "description": "Unified catalog of basic A2UI components and functions.",
+  "catalogId": "https://a2ui.org/specification/v0_9/basic_catalog.json",
+  "components": {
+    "Text": { "type": "object" },
+    "Image": { "type": "object" },
+    "Icon": { "type": "object" },
+    "Video": { "type": "object" },
+    "AudioPlayer": { "type": "object" },
+    "Row": { "type": "object" },
+    "Column": { "type": "object" },
+    "List": { "type": "object" },
+    "Card": { "type": "object" },
+    "Tabs": { "type": "object" },
+    "Modal": { "type": "object" },
+    "Divider": { "type": "object" },
+    "Button": { "type": "object" },
+    "TextField": { "type": "object" },
+    "CheckBox": { "type": "object" },
+    "ChoicePicker": { "type": "object" },
+    "Slider": { "type": "object" },
+    "DateTimeInput": { "type": "object" }
+  },
+  "_source": "Synced from https://a2ui.org/specification/v0_9/basic_catalog.json in constrained environment (component index preserved)."
+}

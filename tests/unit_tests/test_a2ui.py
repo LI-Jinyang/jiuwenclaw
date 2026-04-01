@@ -1,0 +1,73 @@
+import json
+
+from jiuwenclaw.agentserver.a2ui import (
+    A2UI_BASIC_CATALOG_LOCAL,
+    A2UIResponseBuilder,
+    extract_a2ui_jsonl_lines,
+    is_a2ui_text,
+    resolve_catalog_id,
+)
+
+
+def test_a2ui_response_builder_minimal_payload():
+    builder = A2UIResponseBuilder()
+    lines = (
+        builder.create_surface()
+        .update_components(
+            [
+                {
+                    "id": "root",
+                    "component": {
+                        "Text": {
+                            "text": {"literalString": "Result"},
+                        }
+                    },
+                }
+            ]
+        )
+        .to_jsonl_lines()
+    )
+    assert len(lines) == 2
+    first = json.loads(lines[0])
+    second = json.loads(lines[1])
+    assert first["createSurface"]["catalogId"] == A2UI_BASIC_CATALOG_LOCAL
+    assert second["updateComponents"]["components"][0]["id"] == "root"
+
+
+def test_extract_a2ui_jsonl_lines_from_fenced_block():
+    raw = """```a2ui-jsonl
+{"createSurface":{"surfaceId":"main","catalogId":"https://a2ui.org/specification/v0_9/basic_catalog.json"}}
+{"updateComponents":{"surfaceId":"main","components":[{"id":"root","component":{"Text":{"text":{"literalString":"ok"}}}}]}}
+```"""
+    lines = extract_a2ui_jsonl_lines(raw)
+    assert len(lines) == 2
+    assert json.loads(lines[0])["version"] == "v0.9"
+
+
+def test_is_a2ui_text_detects_fenced_payload():
+    raw = """```a2ui-jsonl
+{"createSurface":{"surfaceId":"main","catalogId":"https://a2ui.org/specification/v0_9/basic_catalog.json"}}
+```"""
+    assert is_a2ui_text(raw) is True
+
+
+def test_resolve_catalog_id_default_local():
+    assert resolve_catalog_id({}) == A2UI_BASIC_CATALOG_LOCAL
+
+
+def test_extract_component_object_blocks_as_a2ui_lines():
+    raw = """Card
+{
+  "title": {"literalString": "A2UI Demo"},
+  "child": "desc"
+}
+Text
+{
+  "text": {"literalString": "你好"}
+}"""
+    lines = extract_a2ui_jsonl_lines(raw)
+    assert len(lines) == 2
+    create_surface = json.loads(lines[0])
+    update_components = json.loads(lines[1])
+    assert create_surface["createSurface"]["surfaceId"] == "main"
+    assert update_components["updateComponents"]["components"][0]["component"]["Card"]["child"] == "desc"

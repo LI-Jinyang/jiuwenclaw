@@ -17,6 +17,7 @@ export interface Message {
   role: MessageRole;
   content: string;
   timestamp: string;
+  a2uiLines?: string[];
   audioBase64?: string;
   audioMime?: string;
   mediaItems?: MediaItem[];
